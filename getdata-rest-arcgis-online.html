@@ -1,0 +1,125 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Peta Batas Kecamatan & Titik WiFi</title>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+  <!-- Leaflet CSS -->
+  <link rel="stylesheet" href="https://unpkg.com/leaflet/dist/leaflet.css" />
+  <style>
+    #map {
+      height: 100vh;
+      width: 100%;
+    }
+  </style>
+</head>
+<body>
+
+<h2>Peta Batas Kecamatan dan Titik WiFi</h2>
+<div id="map"></div>
+
+<!-- Leaflet JS -->
+<script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
+
+<script>
+  // Inisialisasi peta
+  var map = L.map('map').setView([0.15, 117.52], 12); // Ubah sesuai lokasi kamu
+
+  // Tambahkan layer dasar dari OpenStreetMap
+  L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+    attribution: '© OpenStreetMap contributors'
+  }).addTo(map);
+
+  // Fungsi untuk membuat popup dari semua properti
+  function createPopupContent(properties) {
+    let popupContent = '<ul>';
+    for (let key in properties) {
+      popupContent += `<li><strong>${key}</strong>: ${properties[key]}</li>`;
+    }
+    popupContent += '</ul>';
+    return popupContent;
+  }
+
+  // Fungsi untuk memuat layer GeoJSON
+  function loadGeoJSONLayer(serviceId, layerName, style, popupTitle) {
+    const baseUrl = `https://services.arcgis.com/${serviceId}/ArcGIS/rest/services/${layerName}/FeatureServer/0/query`;
+    const params = {
+      where: '1=1',
+      outFields: '*',
+      f: 'geojson',
+      geometryType: 'esriGeometryPolygon',
+      spatialRel: 'esriSpatialRelIntersects',
+      outSR: '4326',
+      returnGeometry: true,
+      returnDistinctValues: false,
+      returnCountOnly: false
+    };
+    const token = 'YOUR_ACCESS_TOKEN';
+    
+    const queryString = new URLSearchParams({...params, token}).toString();
+    const url = `${baseUrl}?${queryString}`;
+
+    return fetch(url)
+      .then(response => {
+        if (!response.ok) {
+          throw new Error(`HTTP error! status: ${response.status}`);
+        }
+        return response.json();
+      })
+      .then(data => {
+        console.log(`${layerName} GeoJSON data:`, data);
+        if (!data.features) {
+          throw new Error('Invalid GeoJSON: missing features array');
+        }
+        return L.geoJSON(data, {
+          style: style,
+          onEachFeature: function (feature, layer) {
+            if (feature.properties) {
+              layer.bindPopup(`<b>${popupTitle}</b>` + createPopupContent(feature.properties));
+            }
+          }
+        });
+      })
+      .catch(error => {
+        console.error(`Error loading ${layerName} GeoJSON:`, error);
+      });
+  }
+
+  // Konfigurasi layer
+  const layers = [
+    {
+      serviceId: 'YOUR_SERVICE_ID',
+      layerName: 'YOUR_LAYER_NAME',
+      style: { color: 'blue', weight: 2, fillOpacity: 0.3 },
+      popupTitle: 'Title'
+    },
+  ];
+
+  // Membuat objek untuk menyimpan layer
+  const overlayMaps = {};
+
+  // Memuat semua layer dan menambahkannya ke kontrol layer
+  Promise.all(layers.map(layer => 
+    loadGeoJSONLayer(
+      layer.serviceId,
+      layer.layerName,
+      layer.style,
+      layer.popupTitle
+    ).then(geoJSONLayer => {
+      if (geoJSONLayer) {
+        overlayMaps[layer.popupTitle] = geoJSONLayer;
+        geoJSONLayer.addTo(map);
+      }
+    })
+  )).then(() => {
+    // Menambahkan kontrol layer ke peta
+    L.control.layers(null, overlayMaps, {
+      position: 'topright',
+      collapsed: false
+    }).addTo(map);
+  });
+</script>
+
+</body>
+</html>

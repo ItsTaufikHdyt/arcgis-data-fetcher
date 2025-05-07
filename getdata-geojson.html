@@ -1,0 +1,81 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Peta</title>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+  <!-- Leaflet CSS -->
+  <link rel="stylesheet" href="https://unpkg.com/leaflet/dist/leaflet.css" />
+  <style>
+    #map {
+      height: 100vh;
+      width: 100%;
+    }
+  </style>
+</head>
+<body>
+
+<h2>Peta</h2>
+<div id="map"></div>
+
+<!-- Leaflet JS -->
+<script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
+
+<script>
+  // Inisialisasi peta
+  var map = L.map('map').setView([0.15, 117.52], 12); // Ubah sesuai lokasi kamu
+
+  // Tambahkan layer dasar dari OpenStreetMap
+  L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+    attribution: '© OpenStreetMap contributors'
+  }).addTo(map);
+
+  // Fungsi untuk membuat popup dari semua properti
+  function createPopupContent(properties) {
+    let popupContent = '<ul>';
+    for (let key in properties) {
+      popupContent += `<li><strong>${key}</strong>: ${properties[key]}</li>`;
+    }
+    popupContent += '</ul>';
+    return popupContent;
+  }
+
+    fetch('wifi.geojson')
+    .then(response => response.json())
+    .then(data => {
+      L.geoJSON(data, {
+        style: {
+          color: 'green',
+          weight: 2,
+          fillOpacity: 0.3
+        },
+        onEachFeature: function (feature, layer) {
+          if (feature.properties) {
+            layer.bindPopup('<b>Data:</b>' + createPopupContent(feature.properties));
+          }
+        }
+      }).addTo(map);
+    });
+    
+  // Layer GeoJSON
+  fetch('kecamatan.geojson')
+    .then(response => response.json())
+    .then(data => {
+      L.geoJSON(data, {
+        style: {
+          color: 'blue',
+          weight: 2,
+          fillOpacity: 0.3
+        },
+        onEachFeature: function (feature, layer) {
+          if (feature.properties) {
+            layer.bindPopup('<b>Data:</b>' + createPopupContent(feature.properties));
+          }
+        }
+      }).addTo(map);
+    });
+</script>
+
+</body>
+</html>

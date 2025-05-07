@@ -1,0 +1,193 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Peta</title>
+    <style>
+      html,
+      body,
+      #viewDiv {
+        padding: 0;
+        margin: 0;
+        height: 100vh;
+        width: 100%;
+      }
+      h2 {
+        margin: 10px;
+        text-align: center;
+      }
+      .popup-content {
+        max-height: 300px;
+        overflow-y: auto;
+      }
+      .popup-field {
+        margin: 5px 0;
+      }
+      .popup-field-label {
+        font-weight: bold;
+        color: #666;
+      }
+    </style>
+
+    <link rel="stylesheet" href="https://js.arcgis.com/4.32/esri/themes/light/main.css" />
+    <script src="https://js.arcgis.com/4.32"></script>
+
+    <script>
+      require([
+        "esri/config",
+        "esri/Map",
+        "esri/views/MapView",
+        "esri/layers/FeatureLayer",
+        "esri/widgets/LayerList",
+        "esri/PopupTemplate"
+      ], (esriConfig, Map, MapView, FeatureLayer, LayerList, PopupTemplate) => {
+        try {
+          console.log("Initializing map...");
+          
+          esriConfig.apiKey = "YOUR_ACCESS_TOKEN"
+
+          const map = new Map({
+            basemap: "satellite"
+          })
+
+          console.log("Map created, creating view...");
+
+          const view = new MapView({
+            container: "viewDiv",
+            map: map,
+            center: [117.52, 0.15], // Longitude, latitude
+            zoom: 12,
+            constraints: {
+              snapToZoom: false
+            }
+          })
+
+          view.when(() => {
+            console.log("Map view loaded successfully");
+          }, (error) => {
+            console.error("Error loading map view:", error);
+          });
+
+          // Function to create popup content
+          function createPopupContent(feature) {
+            const attributes = feature.graphic.attributes;
+            let content = '<div class="popup-content">';
+            
+            for (let key in attributes) {
+              if (attributes[key] !== null && attributes[key] !== undefined) {
+                content += `
+                  <div class="popup-field">
+                    <span class="popup-field-label">${key}:</span>
+                    <span>${attributes[key]}</span>
+                  </div>
+                `;
+              }
+            }
+            
+            content += '</div>';
+            return content;
+          }
+
+          // Add feature layers
+          const layers = [
+            {
+              url: "https://services.arcgis.com/{YOUR_SERVICE_ID}/ArcGIS/rest/services/{YOUR_LAYER_NAME}/FeatureServer/0",
+              title: "Title",
+              color: [0, 0, 255, 0.3],
+              outlineColor: [0, 0, 255, 1],
+              type: "polygon"
+            },
+            {
+              url: "https://services.arcgis.com/{YOUR_SERVICE_ID}/ArcGIS/rest/services/{YOUR_LAYER_NAME}/FeatureServer/0",
+              title: "WiFi",
+              color: [0, 255, 0, 1],
+              size: 8,
+              type: "point"
+            },
+            {
+              url: "https://services.arcgis.com/{YOUR_SERVICE_ID}/ArcGIS/rest/services/{YOUR_LAYER_NAME}/FeatureServer/0",
+              title: "Jalan",
+              color: [255, 255, 255, 1],
+              width: 2,
+              type: "line"
+            }
+          ]
+
+          console.log("Adding feature layers...");
+
+          layers.forEach(layerConfig => {
+            let renderer;
+            
+            if (layerConfig.type === "point") {
+              renderer = {
+                type: "simple",
+                symbol: {
+                  type: "simple-marker",
+                  style: "circle",
+                  color: layerConfig.color,
+                  size: layerConfig.size,
+                  outline: {
+                    color: [255, 255, 255],
+                    width: 1
+                  }
+                }
+              };
+            } else if (layerConfig.type === "line") {
+              renderer = {
+                type: "simple",
+                symbol: {
+                  type: "simple-line",
+                  color: layerConfig.color,
+                  width: layerConfig.width,
+                  style: "solid"
+                }
+              };
+            } else {
+              renderer = {
+                type: "simple",
+                symbol: {
+                  type: "simple-fill",
+                  color: layerConfig.color,
+                  outline: {
+                    color: layerConfig.outlineColor,
+                    width: 2
+                  }
+                }
+              };
+            }
+
+            const layer = new FeatureLayer({
+              url: layerConfig.url,
+              title: layerConfig.title,
+              popupTemplate: {
+                title: layerConfig.title,
+                content: createPopupContent
+              },
+              renderer: renderer
+            })
+            map.add(layer)
+          })
+
+          console.log("Adding widgets...");
+
+          // Add LayerList widget
+          const layerList = new LayerList({
+            view: view
+          })
+
+          // Add widgets to the view
+          view.ui.add(layerList, "top-right")
+
+          console.log("Map initialization complete");
+        } catch (error) {
+          console.error("Error in map initialization:", error);
+        }
+      })
+    </script>
+  </head>
+  <body>
+    <h2>Peta</h2>
+    <div id="viewDiv"></div>
+  </body>
+</html>
